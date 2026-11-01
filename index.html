@@ -52,7 +52,7 @@ input:focus{box-shadow:0 0 0 3px #e8b92355}
 .res .row:last-of-type{border-bottom:none}
 .res .k{color:#ffe9a0}
 .res .v{font-weight:bold;unicode-bidi:plaintext}
-.score{font-size:4.2rem;color:var(--gold);font-weight:bold;direction:ltr;text-shadow:0 0 20px #e8b92388;line-height:1.2;margin-top:8px}
+.score{font-size:4.2rem;color:var(--gold);font-weight:bold;text-shadow:0 0 20px #e8b92388;line-height:1.2;margin-top:8px}
 .msg{font-size:1.3rem;margin:6px 0 10px}
 table{width:100%;border-collapse:collapse;margin-top:8px}
 th,td{padding:9px 8px;text-align:center;border-bottom:1px solid #ffffff22}
@@ -85,7 +85,7 @@ h2{color:var(--gold);margin:22px 0 4px;text-align:center;font-size:1.25rem}
   <div class="center" style="margin-top:14px"><button class="btn main" id="btn-start">ابدأ الفرض</button></div>
   <div class="note">
    20 سؤالًا عشوائيًا من بنك الأسئلة — كل سؤال بنقطة واحدة — يمكنك الرجوع وتغيير إجابتك قبل الإرسال.<br>
-   <b>تنبيه:</b> لا يمكن إعادة الفرض بعد الإرسال، ولا يُسمح بمحاولة ثانية لنفس التلميذ.
+   <b>تنبيه:</b> لا يمكن إعادة الفرض بعد الإرسال. إذا وُجد الاسم والقسم مسجّلين من قبل فلن تتمكن من البدء. تأكد من كتابة اسمك وقسمك الصحيحين.
   </div>
  </div>
 
@@ -121,7 +121,11 @@ h2{color:var(--gold);margin:22px 0 4px;text-align:center;font-size:1.25rem}
   <div class="score" id="r-score"></div>
   <div class="msg" id="r-msg"></div>
   <div class="legend" id="r-rank"></div>
-  <div class="note">لا يمكنك إعادة الفرض. إن كان هناك خطأ، تواصل مع الأستاذة.</div>
+  <div class="center" style="margin-top:18px">
+   <button class="btn main" id="btn-new">👤 تلميذ جديد (خروج من هذه النتيجة)</button>
+   <div class="legend" id="r-count" style="margin-top:8px"></div>
+  </div>
+  <div class="note">لا يمكنك إعادة الفرض. سجّل علامتك ثم اضغط «تلميذ جديد» ليجلس التلميذ التالي. إن كان هناك خطأ، تواصل مع الأستاذة.</div>
   <h2>🏆 لوحة الترتيب</h2>
   <table>
    <thead><tr><th>#</th><th>الاسم</th><th>القسم</th><th>الفوج</th><th>النقطة</th><th>المدة</th></tr></thead>
@@ -141,22 +145,9 @@ function fetchStore(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(
 function clearStore(k){ try{ localStorage.removeItem(k); }catch(e){} }
 function save(){ store('qz', {me, Q, A, cur, start}); }
 
-/* معرّف الجهاز: يمنع إعادة الفرض من نفس الجهاز/المتصفح */
-function deviceId(){
-  let d = fetchStore('qzdev');
-  if(typeof d !== 'string' || d.length < 16){
-    const a = new Uint8Array(16);
-    (window.crypto || window.msCrypto).getRandomValues(a);
-    d = Array.from(a, b => b.toString(16).padStart(2,'0')).join('');
-    store('qzdev', d);
-  }
-  return d;
-}
-const DEV = (function(){ try{ return deviceId(); }catch(e){ return Math.random().toString(16).slice(2).padEnd(32,'0'); } })();
-
 function show(id){ for(const s of ['s-start','s-quiz','s-result']) $('#'+s).classList.toggle('hide', s!==id); }
 function fmt(sec){ const m=Math.floor(sec/60), s=sec%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
-function markText(score, total){ return score + ' / ' + total; }
+function markText(score, total){ return '\u2066' + score + ' / ' + total + '\u2069'; } /* يحافظ على الترتيب 6 / 20 داخل النص العربي */
 
 function shuffle(items){
   const a = items.slice();
@@ -164,24 +155,42 @@ function shuffle(items){
   return a;
 }
 
+let BANK = null;
+function newQuestions(){ Q = shuffle(BANK.questions).slice(0, 20).map(q => ({...q, options: shuffle(q.options)})); }
+
 async function init(){
   try{
-    const d = await (await fetch('/api/quiz')).json();
-    Q = shuffle(d.questions).slice(0, 20).map(q => ({...q, options: shuffle(q.options)})); $('#title').textContent = d.title; document.title = d.title;
+    BANK = await (await fetch('/api/quiz')).json();
+    $('#title').textContent = BANK.title; document.title = BANK.title;
+    newQuestions();
   }catch(e){
     $('#start-err').textContent = 'تعذر الاتصال بالخادم. تحقق من الاتصال ثم أعد تحميل الصفحة.'; return;
   }
-  /* هل أنجز هذا الجهاز الفرض من قبل؟ اعرض نتيجته مباشرة. */
-  try{
-    const m = await (await fetch('/api/mine?device='+encodeURIComponent(DEV))).json();
-    if(m && m.row){ clearStore('qz'); myId = m.row.id; showResult(m.row); return; }
-  }catch(e){}
+  /* استئناف فرض لم يكتمل (مثلًا بعد تحديث الصفحة بالخطأ) لمدة أقصاها 90 دقيقة */
   const st = fetchStore('qz');
-  if(st && st.Q && st.Q.length === 20 && st.A && st.A.length === 20){
+  if(st && st.Q && st.Q.length === 20 && st.A && st.A.length === 20 && st.start && Date.now()-st.start < 90*60*1000){
     Q = st.Q; me = st.me; A = st.A; cur = st.cur||0; start = st.start;
     beginQuiz();
-  }
+  } else clearStore('qz');
 }
+
+/* تلميذ جديد على نفس الجهاز: تصفير كل شيء والعودة لشاشة البداية */
+let backTimer = null;
+function newStudent(){
+  clearInterval(backTimer); clearInterval(boardTimer); clearInterval(tick);
+  clearStore('qz'); myId = null; me = {name:'', group:'', classGroup:''}; A = []; cur = 0; sending = false; $('#btn-next').disabled = false;
+  ['#f-name','#f-group','#f-classGroup'].forEach(s => { $(s).value = ''; });
+  $('#start-err').textContent = '';
+  if(BANK) newQuestions();
+  show('s-start'); window.scrollTo(0,0); $('#f-name').focus();
+}
+function startCountdown(){
+  let s = 120; const el = $('#r-count'); clearInterval(backTimer);
+  const paint = () => { el.textContent = 'ستعود الصفحة تلقائيًا إلى شاشة البداية بعد ' + s + ' ثانية'; };
+  paint();
+  backTimer = setInterval(() => { s--; if(s <= 0){ newStudent(); } else paint(); }, 1000);
+}
+$('#btn-new').onclick = newStudent;
 
 $('#btn-start').onclick = async () => {
   const name = $('#f-name').value.trim().replace(/\s+/g,' ');
@@ -192,12 +201,10 @@ $('#btn-start').onclick = async () => {
   if(!group){ err.textContent = 'اكتب قسمك من فضلك.'; return; }
   if(!classGroup){ err.textContent = 'اكتب فوجك من فضلك.'; return; }
   try{
-    const r = await fetch('/api/check?name='+encodeURIComponent(name)+'&group='+encodeURIComponent(group)+'&classGroup='+encodeURIComponent(classGroup)+'&device='+encodeURIComponent(DEV));
+    const r = await fetch('/api/check?name='+encodeURIComponent(name)+'&group='+encodeURIComponent(group));
     const d = await r.json();
     if(d.exists){
-      err.textContent = d.reason === 'device'
-        ? 'تم إنجاز الفرض من هذا الجهاز من قبل. لا يمكن إعادة المحاولة.'
-        : 'هذا التلميذ أنجز الفرض من قبل في هذا القسم. لا يمكن إعادة المحاولة.';
+      err.textContent = 'لا يمكنك إعادة الفرض: هذا التلميذ أنجز الفرض من قبل في هذا القسم.';
       return;
     }
   }catch(e){ err.textContent = 'تعذر الاتصال بالخادم.'; return; }
@@ -206,6 +213,7 @@ $('#btn-start').onclick = async () => {
 };
 
 function beginQuiz(){
+  sending = false; $('#btn-next').disabled = false;
   $('#who').textContent = me.name;
   show('s-quiz'); render();
   clearInterval(tick);
@@ -256,7 +264,7 @@ async function finish(){
   sending = true; const btn = $('#btn-next'); btn.disabled = true;
   try{
     const r = await fetch('/api/submit', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({name:me.name, group:me.group, classGroup:me.classGroup, device:DEV,
+      body: JSON.stringify({name:me.name, group:me.group, classGroup:me.classGroup,
         responses:Q.map((q,i)=>({id:q.id, answer:A[i]>=0 ? q.options[A[i]] : null})),
         seconds:Math.floor((Date.now()-start)/1000)})});
     const d = await r.json();
@@ -281,13 +289,14 @@ function showResult(row){
   $('#r-group').textContent = row.group;
   $('#r-classGroup').textContent = row.classGroup || (me && me.classGroup) || '—';
   const mk = markText(row.score, row.total);
-  $('#r-mark').textContent = mk + ' نقطة';
-  $('#r-score').textContent = mk + ' نقطة';
+  $('#r-mark').style.unicodeBidi = 'normal'; $('#r-mark').style.direction = 'rtl'; $('#r-mark').innerHTML = '<bdi dir="ltr">' + row.score + ' / ' + row.total + '</bdi> نقطة';
+  $('#r-score').innerHTML = '<span dir="ltr">' + row.score + ' / ' + row.total + '</span> <span style="font-size:1.5rem">نقطة</span>';
   $('#r-correct').textContent = row.score;
   $('#r-wrong').textContent = row.total - row.score;
   const p = row.score/row.total;
   $('#r-msg').textContent = p>=0.8 ? '🌟 ممتاز! أحسنت!' : p>=0.5 ? '👍 جيد، واصل الاجتهاد' : '📚 راجع الدروس وحاول التحسّن';
   loadBoard(); clearInterval(boardTimer); boardTimer = setInterval(loadBoard, 8000);
+  startCountdown();
 }
 
 async function loadBoard(){
