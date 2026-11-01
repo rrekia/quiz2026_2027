@@ -5,12 +5,16 @@ import cfg from "./questions.mjs";
 
 export const config = { path: ["/api/*", "/export.csv"] };
 
-const norm = (s) => String(s ?? "").split(/\s+/).filter(Boolean).join(" ").toLowerCase();
+// توحيد الاسم: يتجاهل الحركات والتطويل واختلاف الألف والياء والتاء المربوطة والمسافات الزائدة
+const norm = (s) => String(s ?? "")
+  .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+  .replace(/[أإآٱ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه")
+  .split(/\s+/).filter(Boolean).join(" ").toLowerCase();
+// هوية التلميذ = الاسم + القسم فقط (الجهاز غير مهم: عدة تلاميذ يتناوبون على نفس الحاسوب)
+const studentKey = (name, group) => hash(norm(name) + "|" + norm(group));
 const hash = (s) => createHash("sha256").update(s).digest("hex");
 const clean = (s, n) => String(s ?? "").split(/\s+/).filter(Boolean).join(" ").slice(0, n);
 const TOTAL = 20; // عدد الأسئلة لكل تلميذ
-const DEV_RE = /^[A-Za-z0-9-]{16,64}$/;
-const devHash = (d) => (typeof d === "string" && DEV_RE.test(d) ? hash("dev:" + d) : null);
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
@@ -41,7 +45,6 @@ async function handle(req) {
   const url = new URL(req.url);
   const p = url.pathname;
   const results = getStore({ name: "results", consistency: "strong" });
-  const devices = getStore({ name: "devices", consistency: "strong" });
 
   if (req.method === "GET") {
     if (p === "/api/quiz") {
@@ -57,21 +60,11 @@ async function handle(req) {
       return json(cache.rows);
     }
     if (p === "/api/check") {
-      const key = hash(norm(url.searchParams.get("name")) + "|" + norm(url.searchParams.get("group")) + "|" + norm(url.searchParams.get("classGroup")));
-      const dh = devHash(url.searchParams.get("device"));
-      if (dh && (await devices.get(dh)) !== null) return json({ exists: true, reason: "device" });
+      const key = studentKey(url.searchParams.get("name"), url.searchParams.get("group"));
       if ((await results.get(key)) !== null) return json({ exists: true, reason: "name" });
       return json({ exists: false });
     }
-    if (p === "/api/mine") {
-      const dh = devHash(url.searchParams.get("device"));
-      if (!dh) return json({ row: null });
-      const claim = await devices.get(dh, { type: "json" });
-      if (!claim) return json({ row: null });
-      const row = await results.get(claim.key, { type: "json" });
-      if (!row) { await devices.delete(dh); return json({ row: null }); }
-      return json({ row: pub(row) });
-    }
+    if (p === "/api/mine") return json({ row: null });
     if (p === "/export.csv") {
       if (!pwOk(url.searchParams.get("pw"))) return json({ error: "كلمة السر خاطئة" }, 403);
       const rows = sortRows(await allRows(results));
@@ -100,8 +93,6 @@ async function handle(req) {
       const classGroup = clean(body.classGroup, 20);
       if (!name) return json({ error: "الاسم مطلوب" }, 400);
       if (!group || !classGroup) return json({ error: "القسم والفوج مطلوبان" }, 400);
-      const dh = devHash(body.device);
-      if (!dh) return json({ error: "تعذر تحديد الجهاز. أعد تحميل الصفحة." }, 400);
       // الواجهة ترسل 20 إجابة: [{id: رقم السؤال في البنك, answer: نص الاختيار أو null}]
       const resp = body.responses;
       if (!Array.isArray(resp) || resp.length !== TOTAL) return json({ error: "إجابات غير صالحة" }, 400);
@@ -117,22 +108,16 @@ async function handle(req) {
       let seconds = parseInt(body.seconds, 10);
       if (!Number.isFinite(seconds)) seconds = 0;
       seconds = Math.max(0, Math.min(seconds, 86400));
-      const key = hash(norm(name) + "|" + norm(group) + "|" + norm(classGroup));
+      const key = studentKey(name, group);
       const d = new Date();
       const pad = (n) => String(n).padStart(2, "0");
       const row = {
-        id: key, dev: dh, name, group, classGroup, score, total: TOTAL, seconds,
+        id: key, name, group, classGroup, score, total: TOTAL, seconds,
         time: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} UTC`,
       };
-      // 1) حجز الجهاز (ذرّي): إن كان محجوزًا فقد أنجز الفرض من قبل
-      const claim = await devices.setJSON(dh, { key }, { onlyIfNew: true });
-      if (!claim.modified) return json({ error: "تم إنجاز الفرض من هذا الجهاز من قبل. لا يمكن إعادة المحاولة." }, 409);
-      // 2) حجز الاسم والقسم (ذرّي)
+      // حجز الاسم والقسم (ذرّي): إن وُجد سابقًا فلا يُسمح بإعادة الفرض
       const res = await results.setJSON(key, row, { onlyIfNew: true });
-      if (!res.modified) {
-        await devices.delete(dh);
-        return json({ error: "هذا التلميذ أنجز الفرض من قبل. لا يمكن إعادة المحاولة." }, 409);
-      }
+      if (!res.modified) return json({ error: "لا يمكنك إعادة الفرض: هذا التلميذ أنجز الفرض من قبل في هذا القسم." }, 409);
       invalidate();
       return json({ ok: true, id: key, score, total: row.total });
     }
@@ -140,19 +125,15 @@ async function handle(req) {
     if (p === "/api/admin/delete") {
       if (!pwOk(body.password)) return json({ error: "كلمة السر خاطئة" }, 403);
       const id = String(body.id ?? "");
-      const row = await results.get(id, { type: "json" });
       await results.delete(id);
-      if (row && row.dev) await devices.delete(row.dev);
       invalidate();
       return json({ ok: true });
     }
 
     if (p === "/api/admin/reset") {
       if (!pwOk(body.password)) return json({ error: "كلمة السر خاطئة" }, 403);
-      for (const st of [results, devices]) {
-        const { blobs } = await st.list();
-        await Promise.all(blobs.map((b) => st.delete(b.key)));
-      }
+      const { blobs } = await results.list();
+      await Promise.all(blobs.map((b) => results.delete(b.key)));
       invalidate();
       return json({ ok: true });
     }
