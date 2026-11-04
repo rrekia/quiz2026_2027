@@ -6,7 +6,13 @@
 <title>الفرض الإلكتروني</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--gold:#e8b923;--gold2:#a67c00;--blue1:#1a2fa8;--blue2:#050a3a;--ok:#2ecc71}
+:root{--gold:#e8b923;--gold2:#a67c00;--blue1:#1a2fa8;--blue2:#050a3a;--ok:#2ecc71;
+ /* ألوان السؤال: غيّري هذه القيم فقط لتبديل الألوان */
+ --q-top:#0f9b8e;--q-bot:#065f56;--q-text:#ffffff;--q-border:#e8b923;
+ /* ألوان الاختيارات */
+ --o-bg:#fff7e0;--o-bg-hover:#ffe9a8;--o-text:#10205c;--o-letter:#b3261e;--o-border:#e8b923;
+ /* الاختيار المحدّد */
+ --s-top:#2ecc71;--s-bot:#1b8f4d;--s-text:#ffffff}
 body{min-height:100vh;font-family:Tahoma,"Segoe UI",Arial,sans-serif;color:#fff;
  background:radial-gradient(ellipse at 50% 0%,#2a3fd0 0%,#0a1470 40%,#02041a 100%) fixed;
  display:flex;justify-content:center;padding:18px 12px}
@@ -30,16 +36,26 @@ input:focus{box-shadow:0 0 0 3px #e8b92355}
 .bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;color:#ffe9a0;font-size:1rem;gap:8px}
 #timer{direction:ltr;font-variant-numeric:tabular-nums}
 .qbox{border:2px solid var(--gold);border-radius:40px;padding:20px 26px;text-align:center;font-size:1.35rem;
- line-height:1.8;background:linear-gradient(180deg,#1a2fa8,#050a3a);margin-bottom:18px;min-height:90px;
+ line-height:1.8;background:linear-gradient(180deg,var(--q-top),var(--q-bot));color:var(--q-text);border-color:var(--q-border);border-width:3px;font-weight:bold;box-shadow:0 0 0 4px #e8b92344,0 10px 26px #0009,inset 0 2px 0 #ffffff44;text-shadow:0 2px 4px #0006;margin-bottom:18px;min-height:90px;
  display:flex;align-items:center;justify-content:center}
-.opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
-.opt{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:40px;border:2px solid var(--gold);
- background:linear-gradient(180deg,#1a2fa8,#050a3a);color:#fff;font-size:1.1rem;cursor:pointer;font-family:inherit;text-align:center;line-height:1.6}
-.opt .l{color:var(--gold);font-weight:bold;font-size:1.2rem}
-.opt .t{flex:1;unicode-bidi:plaintext;text-align:center}
-.opt:hover{background:linear-gradient(180deg,#3350f0,#0a1470)}
-.opt.sel{background:linear-gradient(180deg,#f5c93b,#b8860b);color:#000;border-color:#fff}
-.opt.sel .l{color:#000}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.opt{position:relative;display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:64px;border-radius:26px;
+ border:2px solid var(--o-border);background:linear-gradient(180deg,#ffffff,var(--o-bg));color:var(--o-text);
+ font-size:1.1rem;cursor:pointer;font-family:inherit;text-align:center;line-height:1.6;
+ box-shadow:0 5px 0 #b8901b,0 10px 18px #0006;transition:transform .15s,box-shadow .15s,background .2s}
+.opt .l{flex:none;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+ color:#fff;font-weight:bold;font-size:1.25rem;box-shadow:inset 0 -3px 0 #0003,0 2px 6px #0004}
+.opt:nth-child(1) .l{background:#e53935}
+.opt:nth-child(2) .l{background:#1e88e5}
+.opt:nth-child(3) .l{background:#fb8c00}
+.opt:nth-child(4) .l{background:#8e24aa}
+.opt .t{flex:1;unicode-bidi:plaintext;text-align:center;font-weight:600}
+.opt:hover{transform:translateY(-3px);background:linear-gradient(180deg,#fffdf2,var(--o-bg-hover));box-shadow:0 8px 0 #b8901b,0 14px 22px #0007}
+.opt:active{transform:translateY(3px);box-shadow:0 2px 0 #b8901b,0 4px 8px #0006}
+.opt.sel{background:linear-gradient(180deg,var(--s-top),var(--s-bot));color:var(--s-text);border-color:#fff;
+ box-shadow:0 5px 0 #0f6b38,0 0 0 4px #ffffff55,0 10px 22px #0008}
+.opt.sel .l{background:#fff;color:#1b8f4d}
+.opt.sel::after{content:"✔";position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:1.3rem;color:#fff}
 .nav{display:flex;justify-content:space-between;gap:10px;margin-bottom:16px}
 .ladder{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
 .ladder button{padding:9px 0;border-radius:10px;border:1.5px solid #5d6ad8;background:#0a1470;color:#cfd4ff;
@@ -231,7 +247,7 @@ function render(){
   q.options.forEach((t,i)=>{
     const b = document.createElement('button');
     b.className = 'opt' + (A[cur]===i ? ' sel' : '');
-    const l = document.createElement('span'); l.className='l'; l.textContent = LET[i]+' :';
+    const l = document.createElement('span'); l.className='l'; l.textContent = LET[i];
     const s = document.createElement('span'); s.className='t'; s.setAttribute('dir','auto'); s.textContent = t;
     b.append(l, s);
     b.onclick = () => { A[cur] = (A[cur]===i ? -1 : i); save(); render(); };
