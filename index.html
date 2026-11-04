@@ -76,6 +76,18 @@ th{color:var(--gold);font-size:.95rem}
 tr.me{background:#e8b92333;font-weight:bold}
 td.nm{text-align:right}
 h2{color:var(--gold);margin:22px 0 4px;text-align:center;font-size:1.25rem}
+/* مراجعة الإجابات */
+.rv{border:2px solid #ffffff33;border-radius:18px;padding:14px 16px;margin:12px 0;text-align:right;background:#050a3a99}
+.rv.ok{border-color:#2ecc71}.rv.bad{border-color:#ff6b6b}.rv.skip{border-color:#e8b923}
+.rv-h{display:flex;justify-content:space-between;gap:8px;font-weight:bold;margin-bottom:8px}
+.rv.ok .rv-h .st{color:#2ecc71}.rv.bad .rv-h .st{color:#ff8a8a}.rv.skip .rv-h .st{color:#ffd04d}
+.rv-q{font-size:1.1rem;line-height:1.8;margin-bottom:8px;unicode-bidi:plaintext}
+.rv-img{max-width:220px;max-height:160px;display:block;margin:6px 0 10px;background:#fff;border-radius:12px;padding:4px}
+.rv-o{display:flex;gap:8px;align-items:flex-start;padding:7px 10px;border-radius:12px;margin:4px 0;border:1px solid #ffffff22;line-height:1.6}
+.rv-o .mk{flex:none;width:1.6em;text-align:center;font-weight:bold}
+.rv-o.c{background:#1c8a4e66;border-color:#2ecc71}
+.rv-o.w{background:#c0392b66;border-color:#ff6b6b}
+.rv-o .tag{margin-inline-start:auto;font-size:.85rem;opacity:.95;white-space:nowrap}
 @media(max-width:620px){
  .opts{grid-template-columns:1fr}
  .ladder{grid-template-columns:repeat(5,1fr)}
@@ -142,6 +154,9 @@ h2{color:var(--gold);margin:22px 0 4px;text-align:center;font-size:1.25rem}
    <div class="legend" id="r-count" style="margin-top:8px"></div>
   </div>
   <div class="note">لا يمكنك إعادة الفرض. سجّل علامتك ثم اضغط «تلميذ جديد» ليجلس التلميذ التالي. إن كان هناك خطأ، تواصل مع الأستاذة.</div>
+  <h2 id="rv-title">📝 مراجعة إجاباتك</h2>
+  <div class="legend" id="rv-legend">الأخضر ✔ = الإجابة الصحيحة — الأحمر ✘ = إجابتك الخاطئة</div>
+  <div id="review"></div>
   <h2>🏆 لوحة الترتيب</h2>
   <table>
    <thead><tr><th>#</th><th>الاسم</th><th>القسم</th><th>الفوج</th><th>النقطة</th><th>المدة</th></tr></thead>
@@ -172,7 +187,19 @@ function shuffle(items){
 }
 
 let BANK = null;
-function newQuestions(){ Q = shuffle(BANK.questions).slice(0, 20).map(q => ({...q, options: shuffle(q.options)})); }
+/* اختيار 20 سؤالًا موزّعة على الدروس حسب quota في questions.mjs، ثم خلط ترتيب الأسئلة والاختيارات */
+function pickQuestions(){
+  const all = BANK.questions, quota = BANK.quota;
+  if(!quota) return shuffle(all).slice(0, 20);
+  const by = {};
+  all.forEach(q => { (by[q.cat] = by[q.cat] || []).push(q); });
+  const pick = [], rest = [];
+  Object.keys(quota).forEach(c => { const arr = shuffle(by[c] || []); pick.push(...arr.slice(0, quota[c])); rest.push(...arr.slice(quota[c])); });
+  Object.keys(by).forEach(c => { if(!(c in quota)) rest.push(...by[c]); });
+  if(pick.length < 20) pick.push(...shuffle(rest).slice(0, 20 - pick.length)); /* إن نقص درس نكمل من غيره */
+  return shuffle(pick).slice(0, 20);
+}
+function newQuestions(){ Q = pickQuestions().map(q => ({...q, options: shuffle(q.options)})); }
 
 async function init(){
   try{
@@ -201,7 +228,7 @@ function newStudent(){
   show('s-start'); window.scrollTo(0,0); $('#f-name').focus();
 }
 function startCountdown(){
-  let s = 120; const el = $('#r-count'); clearInterval(backTimer);
+  let s = 300; const el = $('#r-count'); clearInterval(backTimer);
   const paint = () => { el.textContent = 'ستعود الصفحة تلقائيًا إلى شاشة البداية بعد ' + s + ' ثانية'; };
   paint();
   backTimer = setInterval(() => { s--; if(s <= 0){ newStudent(); } else paint(); }, 1000);
@@ -292,14 +319,40 @@ async function finish(){
     }
     clearInterval(tick); clearStore('qz');
     myId = d.id;
-    showResult({id:d.id, name:me.name, group:me.group, classGroup:me.classGroup, score:d.score, total:d.total});
+    showResult({id:d.id, name:me.name, group:me.group, classGroup:me.classGroup, score:d.score, total:d.total}, d.review);
   }catch(e){
     alert('تعذر الإرسال. تحقق من الاتصال بالشبكة ثم أعد المحاولة (إجاباتك محفوظة).');
     sending = false; btn.disabled = false;
   }
 }
 
-function showResult(row){
+const LETA = ['أ','ب','ج','د'];
+function renderReview(el, review){
+  el.innerHTML = '';
+  if(!review){ const p = document.createElement('div'); p.className = 'legend'; p.textContent = 'لا تتوفر تفاصيل الإجابات.'; el.appendChild(p); return; }
+  review.forEach((it, i) => {
+    const box = document.createElement('div'); box.className = 'rv ' + (it.ok ? 'ok' : (it.chosen ? 'bad' : 'skip'));
+    const hd = document.createElement('div'); hd.className = 'rv-h';
+    const a = document.createElement('span'); a.textContent = 'السؤال ' + (i+1);
+    const b = document.createElement('span'); b.className = 'st'; b.textContent = it.ok ? '✔ إجابة صحيحة (+1)' : (it.chosen ? '✘ إجابة خاطئة' : '— بدون إجابة');
+    hd.append(a, b); box.appendChild(hd);
+    const q = document.createElement('div'); q.className = 'rv-q'; q.setAttribute('dir','auto'); q.textContent = it.q; box.appendChild(q);
+    if(it.image){ const im = document.createElement('img'); im.className = 'rv-img'; im.src = it.image; im.alt = ''; box.appendChild(im); }
+    it.options.forEach((o, k) => {
+      const row = document.createElement('div');
+      const isC = o === it.correct, isW = o === it.chosen && !it.ok;
+      row.className = 'rv-o' + (isC ? ' c' : '') + (isW ? ' w' : '');
+      const mk = document.createElement('span'); mk.className = 'mk'; mk.textContent = isC ? '✔' : (isW ? '✘' : LETA[k]);
+      const t = document.createElement('span'); t.setAttribute('dir','auto'); t.textContent = o;
+      row.append(mk, t);
+      if(isC || isW){ const tg = document.createElement('span'); tg.className = 'tag'; tg.textContent = isC ? (o === it.chosen ? 'إجابتك — صحيحة' : 'الإجابة الصحيحة') : 'إجابتك'; row.appendChild(tg); }
+      box.appendChild(row);
+    });
+    el.appendChild(box);
+  });
+}
+
+function showResult(row, review){
   show('s-result');
   $('#r-name').textContent = row.name;
   $('#r-group').textContent = row.group;
@@ -311,6 +364,8 @@ function showResult(row){
   $('#r-wrong').textContent = row.total - row.score;
   const p = row.score/row.total;
   $('#r-msg').textContent = p>=0.8 ? '🌟 ممتاز! أحسنت!' : p>=0.5 ? '👍 جيد، واصل الاجتهاد' : '📚 راجع الدروس وحاول التحسّن';
+  renderReview($('#review'), review || null);
+  $('#rv-title').classList.toggle('hide', !review); $('#rv-legend').classList.toggle('hide', !review); $('#review').classList.toggle('hide', !review);
   loadBoard(); clearInterval(boardTimer); boardTimer = setInterval(loadBoard, 8000);
   startCountdown();
 }

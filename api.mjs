@@ -45,6 +45,7 @@ async function handle(req) {
   const url = new URL(req.url);
   const p = url.pathname;
   const results = getStore({ name: "results", consistency: "strong" });
+  const answers = getStore({ name: "answers", consistency: "strong" });
 
   if (req.method === "GET") {
     if (p === "/api/quiz") {
@@ -98,12 +99,17 @@ async function handle(req) {
       if (!Array.isArray(resp) || resp.length !== TOTAL) return json({ error: "إجابات غير صالحة" }, 400);
       const seen = new Set();
       let score = 0;
+      const review = []; // مراجعة الإجابات: تُحفظ لتطّلع عليها الأستاذة ويراها التلميذ
       for (const r of resp) {
         const id = r && r.id;
         if (!Number.isInteger(id) || id < 0 || id >= cfg.questions.length || seen.has(id)) return json({ error: "إجابات غير صالحة" }, 400);
         seen.add(id);
         const q = cfg.questions[id];
-        if (typeof r.answer === "string" && r.answer === q.options[q.answer]) score++;
+        const correct = q.options[q.answer];
+        const chosen = typeof r.answer === "string" && q.options.includes(r.answer) ? r.answer : null;
+        const ok = chosen === correct;
+        if (ok) score++;
+        review.push({ q: q.q, image: q.image || null, options: q.options, correct, chosen, ok });
       }
       let seconds = parseInt(body.seconds, 10);
       if (!Number.isFinite(seconds)) seconds = 0;
@@ -118,22 +124,45 @@ async function handle(req) {
       // حجز الاسم والقسم (ذرّي): إن وُجد سابقًا فلا يُسمح بإعادة الفرض
       const res = await results.setJSON(key, row, { onlyIfNew: true });
       if (!res.modified) return json({ error: "لا يمكنك إعادة الفرض: هذا التلميذ أنجز الفرض من قبل في هذا القسم." }, 409);
+      await answers.setJSON(key, { id: key, review });
       invalidate();
-      return json({ ok: true, id: key, score, total: row.total });
+      return json({ ok: true, id: key, score, total: row.total, review });
+    }
+
+    if (p === "/api/admin/answers") {
+      if (!pwOk(body.password)) return json({ error: "كلمة السر خاطئة" }, 403);
+      const id = String(body.id ?? "");
+      const row = await results.get(id, { type: "json" });
+      if (!row) return json({ error: "النتيجة غير موجودة" }, 404);
+      const det = await answers.get(id, { type: "json" });
+      return json({ row: pub(row), review: det ? det.review : null });
+    }
+
+    if (p === "/api/admin/answers-all") {
+      if (!pwOk(body.password)) return json({ error: "كلمة السر خاطئة" }, 403);
+      const rows = sortRows(await allRows(results));
+      const items = await Promise.all(rows.map(async (r) => {
+        const det = await answers.get(r.id, { type: "json" });
+        return { row: pub(r), review: det ? det.review : null };
+      }));
+      return json({ items });
     }
 
     if (p === "/api/admin/delete") {
       if (!pwOk(body.password)) return json({ error: "كلمة السر خاطئة" }, 403);
       const id = String(body.id ?? "");
       await results.delete(id);
+      await answers.delete(id);
       invalidate();
       return json({ ok: true });
     }
 
     if (p === "/api/admin/reset") {
       if (!pwOk(body.password)) return json({ error: "كلمة السر خاطئة" }, 403);
-      const { blobs } = await results.list();
-      await Promise.all(blobs.map((b) => results.delete(b.key)));
+      for (const st of [results, answers]) {
+        const { blobs } = await st.list();
+        await Promise.all(blobs.map((b) => st.delete(b.key)));
+      }
       invalidate();
       return json({ ok: true });
     }
