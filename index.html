@@ -76,6 +76,26 @@ th{color:var(--gold);font-size:.95rem}
 tr.me{background:#e8b92333;font-weight:bold}
 td.nm{text-align:right}
 h2{color:var(--gold);margin:22px 0 4px;text-align:center;font-size:1.25rem}
+/* أسئلة الترتيب والمطابقة */
+.opts>*{min-width:0}
+.opts.wide{grid-template-columns:minmax(0,1fr)}
+.hint{color:#ffe9a0;text-align:center;font-size:.95rem;margin-bottom:6px}
+.ord-sel,.ord-pool{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:12px;border-radius:18px;min-height:64px;align-items:center}
+.ord-sel{background:#050a3a99;border:2px dashed #e8b92388}
+.ord-pool{background:#ffffff10}
+.lbl{color:#ffe9a0;font-size:.9rem;margin:6px 4px 0;text-align:right}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:30px;border:2px solid var(--o-border);background:linear-gradient(180deg,#fff,var(--o-bg));
+ color:var(--o-text);font-family:inherit;font-size:1.05rem;font-weight:600;cursor:pointer;box-shadow:0 4px 0 #b8901b,0 8px 14px #0006;transition:transform .15s}
+.chip:hover{transform:translateY(-2px)}
+.chip .n{display:inline-flex;width:28px;height:28px;border-radius:50%;background:#1e88e5;color:#fff;align-items:center;justify-content:center;font-size:.95rem}
+.ord-sel .chip{background:linear-gradient(180deg,var(--s-top),var(--s-bot));color:#fff;border-color:#fff;box-shadow:0 4px 0 #0f6b38,0 8px 14px #0006}
+.ord-sel .chip .n{background:#fff;color:#1b8f4d}
+.ord-ph{color:#aab2ff;font-size:.95rem}
+.m-row{display:flex;gap:12px;align-items:center;padding:10px 14px;border-radius:20px;background:linear-gradient(180deg,#ffffff,var(--o-bg));border:2px solid var(--o-border);box-shadow:0 4px 0 #b8901b,0 8px 14px #0006}
+.m-term{flex:1;color:var(--o-text);font-weight:bold;font-size:1.05rem;text-align:right}
+.m-sel{flex:1.4;padding:10px 12px;border-radius:14px;border:2px solid #1e88e5;background:#fff;color:#10205c;font-family:inherit;font-size:1rem;max-width:60%}
+.m-sel.on{border-color:#1b8f4d;background:#e6f7ec}
+.rv-l{color:#ffe9a0;font-size:.9rem;margin:8px 2px 2px}
 /* مراجعة الإجابات */
 .rv{border:2px solid #ffffff33;border-radius:18px;padding:14px 16px;margin:12px 0;text-align:right;background:#050a3a99}
 .rv.ok{border-color:#2ecc71}.rv.bad{border-color:#ff6b6b}.rv.skip{border-color:#e8b923}
@@ -90,6 +110,7 @@ h2{color:var(--gold);margin:22px 0 4px;text-align:center;font-size:1.25rem}
 .rv-o .tag{margin-inline-start:auto;font-size:.85rem;opacity:.95;white-space:nowrap}
 @media(max-width:620px){
  .opts{grid-template-columns:1fr}
+ .m-row{flex-direction:column;align-items:stretch}.m-sel{max-width:100%;width:100%}
  .ladder{grid-template-columns:repeat(5,1fr)}
  .qbox{font-size:1.15rem;padding:16px}
  .btn{padding:12px 18px}
@@ -187,19 +208,48 @@ function shuffle(items){
 }
 
 let BANK = null;
-/* اختيار 20 سؤالًا موزّعة على الدروس حسب quota في questions.mjs، ثم خلط ترتيب الأسئلة والاختيارات */
-function pickQuestions(){
-  const all = BANK.questions, quota = BANK.quota;
-  if(!quota) return shuffle(all).slice(0, 20);
-  const by = {};
-  all.forEach(q => { (by[q.cat] = by[q.cat] || []).push(q); });
-  const pick = [], rest = [];
-  Object.keys(quota).forEach(c => { const arr = shuffle(by[c] || []); pick.push(...arr.slice(0, quota[c])); rest.push(...arr.slice(quota[c])); });
-  Object.keys(by).forEach(c => { if(!(c in quota)) rest.push(...by[c]); });
-  if(pick.length < 20) pick.push(...shuffle(rest).slice(0, 20 - pick.length)); /* إن نقص درس نكمل من غيره */
-  return shuffle(pick).slice(0, 20);
+/* ---- أنواع الأسئلة ---- */
+const qt = q => q.type || 'mc';
+function initAns(q){ const t = qt(q); return t === 'order' ? [] : (t === 'match' ? q.terms.map(() => -1) : -1); }
+function isAns(i){ const q = Q[i], a = A[i], t = qt(q); if(t === 'order') return Array.isArray(a) && a.length > 0; if(t === 'match') return Array.isArray(a) && a.some(x => x >= 0); return a >= 0; }
+function answerOf(q, a){
+  const t = qt(q);
+  if(t === 'order') return a.length ? a.map(k => q.items[k]) : null;
+  if(t === 'match') return a.some(x => x >= 0) ? a.map(k => k >= 0 ? q.defs[k] : null) : null;
+  return a >= 0 ? q.options[a] : null;
 }
-function newQuestions(){ Q = pickQuestions().map(q => ({...q, options: shuffle(q.options)})); }
+
+/* اختيار 20 سؤالًا: حصص ثابتة من كل درس (quota)، بلا فكرتين متشابهتين (sub)، مع سؤالَي ترتيب/مطابقة */
+function pickQuestions(){
+  const all = BANK.questions, quota = Object.assign({}, BANK.quota || {});
+  if(!BANK.quota) return shuffle(all).slice(0, 20);
+  const by = {}; all.forEach(q => { (by[q.cat] = by[q.cat] || []).push(q); });
+  const picked = [], ids = new Set(), usedSub = new Set(); let tfCount = 0;
+  const take = q => { picked.push(q); ids.add(q.id); usedSub.add(q.cat + ':' + q.sub); if(q.kind === 'tf') tfCount++; };
+  /* 1) سؤالان تفاعليان (ترتيب/مطابقة) من درسين مختلفين */
+  const usedCats = new Set();
+  for(const q of shuffle(all.filter(q => qt(q) !== 'mc'))){
+    if(picked.length >= 2) break;
+    if(usedCats.has(q.cat) || !(quota[q.cat] > 0)) continue;
+    usedCats.add(q.cat); take(q); quota[q.cat]--;
+  }
+  /* 2) باقي حصص الدروس */
+  shuffle(Object.keys(quota)).forEach(c => {
+    let need = quota[c]; const pool = shuffle(by[c] || []);
+    [1, 2, 3].forEach(pass => {
+      pool.forEach(q => {
+        if(need <= 0 || ids.has(q.id)) return;
+        if(pass < 3 && usedSub.has(q.cat + ':' + q.sub)) return;      /* لا تكرار للفكرة نفسها */
+        if(pass === 1 && q.kind === 'tf' && tfCount >= 3) return;     /* لا أكثر من 3 أسئلة صحيح/خطأ */
+        take(q); need--;
+      });
+    });
+  });
+  /* 3) إن نقص العدد نكمل من أي درس */
+  if(picked.length < 20) shuffle(all).forEach(q => { if(picked.length < 20 && !ids.has(q.id)){ take(q); } });
+  return shuffle(picked).slice(0, 20);
+}
+function newQuestions(){ Q = pickQuestions().map(q => qt(q) === 'mc' ? ({...q, options: shuffle(q.options)}) : q); }
 
 async function init(){
   try{
@@ -251,7 +301,7 @@ $('#btn-start').onclick = async () => {
       return;
     }
   }catch(e){ err.textContent = 'تعذر الاتصال بالخادم.'; return; }
-  me = {name, group, classGroup}; A = Q.map(()=>-1); cur = 0; start = Date.now();
+  me = {name, group, classGroup}; A = Q.map(initAns); cur = 0; start = Date.now();
   save(); beginQuiz();
 };
 
@@ -264,30 +314,75 @@ function beginQuiz(){
   tick = setInterval(()=>{ $('#timer').textContent = fmt(Math.floor((Date.now()-start)/1000)); }, 1000);
 }
 
+function renderLadder(){
+  const lad = $('#ladder'); lad.innerHTML = '';
+  Q.forEach((_,i)=>{
+    const b = document.createElement('button');
+    b.textContent = i+1;
+    b.className = i===cur ? 'cur' : (isAns(i) ? 'ans' : '');
+    b.onclick = () => { cur = i; save(); render(); };
+    lad.appendChild(b);
+  });
+}
+function mk(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+
+function renderOrder(q, box){
+  const seq = A[cur];
+  box.appendChild(mk('div','hint','اضغط على العناصر بالترتيب الصحيح (من الأول إلى الأخير). اضغط على عنصر داخل «ترتيبك» لإزالته.'));
+  box.appendChild(mk('div','lbl','ترتيبك:'));
+  const sel = mk('div','ord-sel');
+  if(!seq.length) sel.appendChild(mk('span','ord-ph','لم تختر شيئًا بعد'));
+  seq.forEach((idx, k) => {
+    const c = mk('button','chip'); c.append(mk('span','n',String(k+1)), mk('span',null,q.items[idx]));
+    c.onclick = () => { A[cur].splice(k, 1); save(); render(); };
+    sel.appendChild(c);
+  });
+  box.appendChild(sel);
+  box.appendChild(mk('div','lbl','العناصر المتاحة:'));
+  const pool = mk('div','ord-pool');
+  q.items.forEach((t, idx) => {
+    if(seq.includes(idx)) return;
+    const c = mk('button','chip',t);
+    c.onclick = () => { A[cur].push(idx); save(); render(); };
+    pool.appendChild(c);
+  });
+  box.appendChild(pool);
+  if(seq.length){ const r = mk('button','btn','↺ مسح الترتيب'); r.style.justifySelf = 'center'; r.onclick = () => { A[cur] = []; save(); render(); }; box.appendChild(r); }
+}
+
+function renderMatch(q, box){
+  box.appendChild(mk('div','hint','اختر لكل عنصر ما يناسبه من القائمة.'));
+  q.terms.forEach((t, ti) => {
+    const row = mk('div','m-row'); row.appendChild(mk('div','m-term',t));
+    const s = mk('select','m-sel'); s.setAttribute('aria-label', t);
+    const o0 = mk('option',null,'— اختر —'); o0.value = '-1'; s.appendChild(o0);
+    q.defs.forEach((d, di) => { const o = mk('option',null,d); o.value = String(di); s.appendChild(o); });
+    s.value = String(A[cur][ti]); if(A[cur][ti] >= 0) s.classList.add('on');
+    s.onchange = () => { A[cur][ti] = parseInt(s.value, 10); s.classList.toggle('on', A[cur][ti] >= 0); save(); renderLadder(); };
+    row.appendChild(s); box.appendChild(row);
+  });
+}
+
 function render(){
-  const q = Q[cur];
+  const q = Q[cur], t = qt(q);
   $('#qnum').textContent = 'السؤال ' + (cur+1) + ' من ' + Q.length;
   $('#qtext').textContent = q.q;
   const iw = $('#qimage-wrap');
   if(q.image){ $('#qimage').src = q.image; iw.classList.remove('hide'); } else { $('#qimage').removeAttribute('src'); iw.classList.add('hide'); }
   const box = $('#opts'); box.innerHTML = '';
-  q.options.forEach((t,i)=>{
+  box.className = 'opts' + (t === 'mc' ? '' : ' wide');
+  if(t === 'order') renderOrder(q, box);
+  else if(t === 'match') renderMatch(q, box);
+  else q.options.forEach((tx,i)=>{
     const b = document.createElement('button');
     b.className = 'opt' + (A[cur]===i ? ' sel' : '');
     const l = document.createElement('span'); l.className='l'; l.textContent = LET[i];
-    const s = document.createElement('span'); s.className='t'; s.setAttribute('dir','auto'); s.textContent = t;
+    const s = document.createElement('span'); s.className='t'; s.setAttribute('dir','auto'); s.textContent = tx;
     b.append(l, s);
     b.onclick = () => { A[cur] = (A[cur]===i ? -1 : i); save(); render(); };
     box.appendChild(b);
   });
-  const lad = $('#ladder'); lad.innerHTML = '';
-  Q.forEach((_,i)=>{
-    const b = document.createElement('button');
-    b.textContent = i+1;
-    b.className = i===cur ? 'cur' : (A[i]>=0 ? 'ans' : '');
-    b.onclick = () => { cur = i; save(); render(); };
-    lad.appendChild(b);
-  });
+  renderLadder();
   $('#btn-prev').disabled = cur===0;
   $('#btn-next').textContent = cur===Q.length-1 ? 'إنهاء وإرسال ✔' : 'التالي ←';
 }
@@ -300,7 +395,7 @@ $('#btn-next').onclick = () => {
 
 async function finish(){
   if(sending) return;
-  const empty = A.filter(a=>a<0).length;
+  const empty = Q.filter((_, i) => !isAns(i)).length;
   let m = empty ? ('لديك ' + empty + ' سؤال بدون إجابة.\n') : '';
   m += 'هل تريد إرسال الفرض الآن؟ لن تتمكن من التعديل ولا من إعادة الفرض بعد الإرسال.';
   if(!confirm(m)) return;
@@ -308,7 +403,7 @@ async function finish(){
   try{
     const r = await fetch('/api/submit', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({name:me.name, group:me.group, classGroup:me.classGroup,
-        responses:Q.map((q,i)=>({id:q.id, answer:A[i]>=0 ? q.options[A[i]] : null})),
+        responses:Q.map((q,i)=>({id:q.id, answer:answerOf(q, A[i])})),
         seconds:Math.floor((Date.now()-start)/1000)})});
     const d = await r.json();
     if(!r.ok){
@@ -327,27 +422,48 @@ async function finish(){
 }
 
 const LETA = ['أ','ب','ج','د'];
+function rvAnswered(it){
+  const t = it.type || 'mc';
+  if(t === 'mc') return !!it.chosen;
+  return !!(it.chosen && it.chosen.some(x => x));
+}
+function rvRow(box, cls, mark, text, tag){
+  const row = document.createElement('div'); row.className = 'rv-o' + (cls ? ' ' + cls : '');
+  const mk = document.createElement('span'); mk.className = 'mk'; mk.textContent = mark;
+  const t = document.createElement('span'); t.setAttribute('dir','auto'); t.textContent = text;
+  row.append(mk, t);
+  if(tag){ const tg = document.createElement('span'); tg.className = 'tag'; tg.textContent = tag; row.appendChild(tg); }
+  box.appendChild(row);
+}
+function rvLabel(box, text){ const l = document.createElement('div'); l.className = 'rv-l'; l.textContent = text; box.appendChild(l); }
 function renderReview(el, review){
   el.innerHTML = '';
   if(!review){ const p = document.createElement('div'); p.className = 'legend'; p.textContent = 'لا تتوفر تفاصيل الإجابات.'; el.appendChild(p); return; }
   review.forEach((it, i) => {
-    const box = document.createElement('div'); box.className = 'rv ' + (it.ok ? 'ok' : (it.chosen ? 'bad' : 'skip'));
+    const t = it.type || 'mc';
+    const box = document.createElement('div'); box.className = 'rv ' + (it.ok ? 'ok' : (rvAnswered(it) ? 'bad' : 'skip'));
     const hd = document.createElement('div'); hd.className = 'rv-h';
-    const a = document.createElement('span'); a.textContent = 'السؤال ' + (i+1);
-    const b = document.createElement('span'); b.className = 'st'; b.textContent = it.ok ? '✔ إجابة صحيحة (+1)' : (it.chosen ? '✘ إجابة خاطئة' : '— بدون إجابة');
+    const a = document.createElement('span'); a.textContent = 'السؤال ' + (i+1) + (t === 'order' ? ' — ترتيب' : t === 'match' ? ' — مطابقة' : '');
+    const b = document.createElement('span'); b.className = 'st'; b.textContent = it.ok ? '✔ إجابة صحيحة (+1)' : (rvAnswered(it) ? '✘ إجابة خاطئة' : '— بدون إجابة');
     hd.append(a, b); box.appendChild(hd);
     const q = document.createElement('div'); q.className = 'rv-q'; q.setAttribute('dir','auto'); q.textContent = it.q; box.appendChild(q);
-    if(it.image){ const im = document.createElement('img'); im.className = 'rv-img'; im.src = it.image; im.alt = ''; box.appendChild(im); }
-    it.options.forEach((o, k) => {
-      const row = document.createElement('div');
-      const isC = o === it.correct, isW = o === it.chosen && !it.ok;
-      row.className = 'rv-o' + (isC ? ' c' : '') + (isW ? ' w' : '');
-      const mk = document.createElement('span'); mk.className = 'mk'; mk.textContent = isC ? '✔' : (isW ? '✘' : LETA[k]);
-      const t = document.createElement('span'); t.setAttribute('dir','auto'); t.textContent = o;
-      row.append(mk, t);
-      if(isC || isW){ const tg = document.createElement('span'); tg.className = 'tag'; tg.textContent = isC ? (o === it.chosen ? 'إجابتك — صحيحة' : 'الإجابة الصحيحة') : 'إجابتك'; row.appendChild(tg); }
-      box.appendChild(row);
-    });
+    if(t === 'order'){
+      rvLabel(box, 'الترتيب الصحيح:');
+      it.items.forEach((x, k) => rvRow(box, 'c', (k+1) + '', x));
+      rvLabel(box, 'ترتيب التلميذ:');
+      it.items.forEach((x, k) => { const ch = it.chosen && it.chosen[k]; rvRow(box, ch === x ? 'c' : 'w', ch === x ? '✔' : '✘', ch || '— (لم يُرتَّب)'); });
+    } else if(t === 'match'){
+      it.pairs.forEach((p, k) => {
+        const ch = it.chosen && it.chosen[k], good = ch === p[1];
+        rvRow(box, good ? 'c' : 'w', good ? '✔' : '✘', p[0] + '  ←  ' + (ch || '— (بدون اختيار)'), good ? '' : 'الصحيح: ' + p[1]);
+      });
+    } else {
+      if(it.image){ const im = document.createElement('img'); im.className = 'rv-img'; im.src = it.image; im.alt = ''; box.appendChild(im); }
+      it.options.forEach((o, k) => {
+        const isC = o === it.correct, isW = o === it.chosen && !it.ok;
+        rvRow(box, (isC ? 'c' : '') + (isW ? ' w' : ''), isC ? '✔' : (isW ? '✘' : LETA[k]), o, isC ? (o === it.chosen ? 'إجابتك — صحيحة' : 'الإجابة الصحيحة') : (isW ? 'إجابتك' : ''));
+      });
+    }
     el.appendChild(box);
   });
 }

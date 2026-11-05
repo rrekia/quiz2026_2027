@@ -41,6 +41,41 @@ async function allRows(results) {
 let cache = { t: 0, rows: null };
 const invalidate = () => { cache = { t: 0, rows: null }; };
 
+// تهيئة السؤال للإرسال إلى التلميذ دون كشف الإجابة الصحيحة
+function shuffled(arr, forbidSame) {
+  const a = arr.slice();
+  for (let tries = 0; tries < 10; tries++) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    if (!forbidSame || a.some((x, i) => x !== arr[i])) break;
+  }
+  return a;
+}
+function publicQ(q, id) {
+  const base = { id, q: q.q, cat: q.cat || "other", sub: q.sub || String(id), kind: q.kind || "mc" };
+  if (q.type === "order") return { ...base, type: "order", items: shuffled(q.items, true) };
+  if (q.type === "match") return { ...base, type: "match", terms: q.pairs.map((p) => p[0]), defs: shuffled(q.pairs.map((p) => p[1]), true) };
+  return { ...base, type: "mc", options: q.options, ...(q.image ? { image: q.image } : {}) };
+}
+const str = (x) => (typeof x === "string" ? x.slice(0, 300) : null);
+
+// تصحيح إجابة واحدة + بناء عنصر المراجعة
+function grade(q, ans) {
+  if (q.type === "order") {
+    const chosen = Array.isArray(ans) ? ans.map(str) : null;
+    const ok = !!chosen && chosen.length === q.items.length && chosen.every((x, i) => x === q.items[i]);
+    return { ok, item: { type: "order", q: q.q, items: q.items, chosen, ok } };
+  }
+  if (q.type === "match") {
+    const chosen = Array.isArray(ans) ? ans.map(str) : null;
+    const ok = !!chosen && chosen.length === q.pairs.length && q.pairs.every((p, i) => chosen[i] === p[1]);
+    return { ok, item: { type: "match", q: q.q, pairs: q.pairs, chosen, ok } };
+  }
+  const correct = q.options[q.answer];
+  const chosen = typeof ans === "string" && q.options.includes(ans) ? ans : null;
+  const ok = chosen === correct;
+  return { ok, item: { type: "mc", q: q.q, image: q.image || null, options: q.options, correct, chosen, ok } };
+}
+
 async function handle(req) {
   const url = new URL(req.url);
   const p = url.pathname;
@@ -51,7 +86,8 @@ async function handle(req) {
     if (p === "/api/quiz") {
       return json({
         title: cfg.title || "الفرض الإلكتروني",
-        questions: cfg.questions.map((q, id) => ({ id, q: q.q, options: q.options, ...(q.image ? { image: q.image } : {}) })),
+        quota: cfg.quota || null,
+        questions: cfg.questions.map((q, id) => publicQ(q, id)),
       });
     }
     if (p === "/api/board") {
@@ -104,12 +140,9 @@ async function handle(req) {
         const id = r && r.id;
         if (!Number.isInteger(id) || id < 0 || id >= cfg.questions.length || seen.has(id)) return json({ error: "إجابات غير صالحة" }, 400);
         seen.add(id);
-        const q = cfg.questions[id];
-        const correct = q.options[q.answer];
-        const chosen = typeof r.answer === "string" && q.options.includes(r.answer) ? r.answer : null;
-        const ok = chosen === correct;
-        if (ok) score++;
-        review.push({ q: q.q, image: q.image || null, options: q.options, correct, chosen, ok });
+        const g = grade(cfg.questions[id], r.answer);
+        if (g.ok) score++;
+        review.push(g.item);
       }
       let seconds = parseInt(body.seconds, 10);
       if (!Number.isFinite(seconds)) seconds = 0;
