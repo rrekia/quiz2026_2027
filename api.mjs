@@ -60,6 +60,11 @@ const str = (x) => (typeof x === "string" ? x.slice(0, 300) : null);
 
 // تصحيح إجابة واحدة + بناء عنصر المراجعة
 function grade(q, ans) {
+  const r = grade0(q, ans);
+  r.item.cat = q.cat || "other"; r.item.sub = q.sub || ""; r.item.kind = q.kind || "mc";
+  return r;
+}
+function grade0(q, ans) {
   if (q.type === "order") {
     const chosen = Array.isArray(ans) ? ans.map(str) : null;
     const ok = !!chosen && chosen.length === q.items.length && chosen.every((x, i) => x === q.items[i]);
@@ -85,8 +90,9 @@ async function handle(req) {
   if (req.method === "GET") {
     if (p === "/api/quiz") {
       return json({
-        title: cfg.title || "الفرض الإلكتروني",
+        title: cfg.title || "الفرض الإلكتروني في مادة المعلوماتية",
         quota: cfg.quota || null,
+        catNames: cfg.catNames || {},
         questions: cfg.questions.map((q, id) => publicQ(q, id)),
       });
     }

@@ -3,55 +3,85 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>لوحة الترتيب</title>
+<title>لوحة الأستاذة — الفرض الإلكتروني في مادة المعلوماتية</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{min-height:100vh;font-family:Tahoma,"Segoe UI",Arial,sans-serif;color:#fff;padding:20px 14px;
- background:radial-gradient(ellipse at 50% 0%,#2a3fd0 0%,#0a1470 40%,#02041a 100%) fixed}
-.wrap{max-width:980px;margin:0 auto}
-h1{text-align:center;color:#e8b923;font-size:1.9rem;margin-bottom:14px}
+:root{--acc:#0f766e;--acc2:#115e59;--ink:#1f2a37;--soft:#5b6b7b;--line:#cfe0dc;--ok:#15803d;--bad:#c2410c}
+html{font-size:17px}
+body{min-height:100vh;font-family:"Segoe UI",Tahoma,"Noto Naskh Arabic","Noto Sans Arabic",Arial,sans-serif;color:var(--ink);line-height:1.8;padding:20px 14px;background:linear-gradient(180deg,#e3f1ee 0%,#f4f8f7 45%,#eef3fa 100%) fixed}
+.wrap{max-width:1000px;margin:0 auto}
+h1{text-align:center;color:var(--acc2);font-size:1.6rem;margin-bottom:4px;font-weight:800}
 .stats{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
-.stat{border:2px solid #e8b923;border-radius:16px;padding:10px 22px;text-align:center;background:#0a1470aa}
-.stat b{display:block;font-size:1.6rem;color:#ffd04d}
-.card{border:2px solid #e8b923;border-radius:20px;padding:16px;background:#060c40cc}
+.stat{border:1.5px solid var(--line);border-radius:16px;padding:10px 22px;text-align:center;background:#fff;color:var(--soft);min-width:120px}
+.stat b{display:block;font-size:1.6rem;color:var(--acc)}
+.card{border:1.5px solid var(--line);border-radius:18px;padding:16px;background:#fff;box-shadow:0 6px 24px #0f766e14;overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th,td{padding:11px 8px;text-align:center;border-bottom:1px solid #ffffff22;font-size:1.1rem}
-th{color:#e8b923}
+th,td{padding:10px 8px;text-align:center;border-bottom:1px solid #dbe8e5;font-size:1.02rem}
+th{color:var(--acc2);background:#f3faf8}
 td.nm{text-align:right}
-tr:nth-child(1) td:first-child{color:#ffd700;font-weight:bold}
+tr:nth-child(1) td:first-child{font-weight:bold}
 .tools{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
-.btn{padding:10px 22px;border-radius:30px;border:2px solid #e8b923;background:#0a1470;color:#fff;cursor:pointer;font-family:inherit;font-size:1rem}
-.btn:hover{background:#e8b923;color:#000}
-.btn.red{border-color:#ff6b6b}.btn.red:hover{background:#ff6b6b}
-.x{background:none;border:none;color:#ff8a8a;cursor:pointer;font-size:1.1rem}
-.sub{text-align:center;color:#aab2ff;margin-bottom:12px;font-size:.95rem}
-.v{background:none;border:none;color:#9fd0ff;cursor:pointer;font-size:1.1rem;margin-inline-end:6px}
-/* نافذة عرض الإجابات */
-#modal{position:fixed;inset:0;background:#000b;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 10px;z-index:10}
-#modal.open{display:flex}
-.mbox{width:100%;max-width:820px;background:#060c40;border:2px solid #e8b923;border-radius:20px;padding:18px}
+.btn{padding:10px 20px;border-radius:12px;border:2px solid var(--acc);background:#fff;color:var(--acc2);cursor:pointer;font-family:inherit;font-size:1rem;font-weight:700}
+.btn:hover{background:#e7f4f1}
+.btn.main{background:var(--acc);color:#fff}
+.btn.red{border-color:#dc2626;color:#b91c1c}.btn.red:hover{background:#fee2e2}
+.x{background:none;border:none;color:#dc2626;cursor:pointer;font-size:1.1rem}
+.sub{text-align:center;color:var(--soft);margin-bottom:12px;font-size:.95rem}
+.v{background:none;border:none;color:#2563eb;cursor:pointer;font-size:1.1rem;margin-inline-end:6px}
+#modal,#amodal{position:fixed;inset:0;background:#0f172acc;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 10px;z-index:10}
+#modal.open,#amodal.open{display:flex}
+.mbox{width:100%;max-width:860px;background:#f7fbfa;border:2px solid var(--acc);border-radius:18px;padding:18px}
 .mtools{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
-.stu h2{color:#e8b923;font-size:1.3rem;margin-bottom:6px;text-align:right}
-.info{display:flex;gap:8px 18px;flex-wrap:wrap;margin-bottom:10px;color:#ffe9a0}
-.info b{color:#fff}
-.rv{border:2px solid #ffffff33;border-radius:14px;padding:10px 14px;margin:10px 0;background:#050a3a99;break-inside:avoid}
-.rv.ok{border-color:#2ecc71}.rv.bad{border-color:#ff6b6b}.rv.skip{border-color:#e8b923}
+.stu h2{color:var(--acc2);font-size:1.3rem;margin-bottom:6px;text-align:right}
+.info{display:flex;gap:8px 18px;flex-wrap:wrap;margin-bottom:10px;color:var(--soft)}
+.info b{color:var(--ink)}
+.rv{border:2px solid var(--line);border-radius:14px;padding:10px 14px;margin:10px 0;background:#fff;break-inside:avoid}
+.rv.ok{border-color:#4ade80}.rv.bad{border-color:#f87171}.rv.skip{border-color:#fbbf24}
 .rv-h{display:flex;justify-content:space-between;gap:8px;font-weight:bold;margin-bottom:6px}
-.rv.ok .st{color:#2ecc71}.rv.bad .st{color:#ff8a8a}.rv.skip .st{color:#ffd04d}
-.rv-q{line-height:1.8;margin-bottom:6px;unicode-bidi:plaintext}
-.rv-img{max-width:160px;max-height:110px;display:block;margin:4px 0 8px;background:#fff;border-radius:8px;padding:3px}
-.rv-o{display:flex;gap:8px;align-items:flex-start;padding:5px 9px;border-radius:10px;margin:3px 0;border:1px solid #ffffff22;line-height:1.6;font-size:1rem}
+.rv.ok .st{color:var(--ok)}.rv.bad .st{color:#b91c1c}.rv.skip .st{color:#b45309}
+.rv-q{line-height:1.8;margin-bottom:6px;unicode-bidi:plaintext;font-weight:700}
+.rv-img{max-width:160px;max-height:110px;display:block;margin:4px 0 8px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px}
+.rv-o{display:flex;gap:8px;align-items:flex-start;padding:5px 9px;border-radius:10px;margin:3px 0;border:1px solid var(--line);line-height:1.6;font-size:1rem;background:#fff}
 .rv-o .mk{flex:none;width:1.6em;text-align:center;font-weight:bold}
-.rv-o.c{background:#1c8a4e66;border-color:#2ecc71}
-.rv-o.w{background:#c0392b66;border-color:#ff6b6b}
+.rv-o.c{background:#dcfce7;border-color:#4ade80}
+.rv-o.w{background:#fee2e2;border-color:#f87171}
 .rv-o .tag{margin-inline-start:auto;font-size:.85rem;white-space:nowrap}
-.rv-l{color:#ffe9a0;font-size:.9rem;margin:8px 2px 2px}
+.rv-l{color:var(--soft);font-size:.9rem;margin:8px 2px 2px;font-weight:600}
+/* التحليل */
+.an h2{color:var(--acc2);font-size:1.25rem;margin:18px 0 8px;border-bottom:2px solid var(--line);padding-bottom:4px}
+.an h2:first-child{margin-top:0}
+.kp{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.kp div{flex:1;min-width:110px;border:1.5px solid var(--line);border-radius:12px;padding:8px;text-align:center;background:#fff;color:var(--soft);font-size:.9rem}
+.kp b{display:block;font-size:1.35rem;color:var(--acc)}
+.br{display:flex;align-items:center;gap:8px;margin:5px 0}
+.br .lb{flex:0 0 38%;font-size:.95rem}
+.br .tr{flex:1;background:#e5eeec;border-radius:8px;height:20px;overflow:hidden}
+.br .fl{height:100%;border-radius:8px}
+.br .nu{flex:0 0 70px;text-align:left;direction:ltr;font-weight:700;font-size:.95rem}
+.hist{display:flex;align-items:flex-end;gap:3px;height:120px;direction:ltr;margin:8px 0 2px}
+.hist div{flex:1;background:var(--acc);border-radius:4px 4px 0 0;position:relative;min-height:2px}
+.hist div span{position:absolute;top:-1.3em;left:0;right:0;text-align:center;font-size:.75rem;color:var(--ink)}
+.hl{display:flex;gap:3px;direction:ltr;font-size:.72rem;color:var(--soft)}
+.hl span{flex:1;text-align:center}
+.err-it{border:1.5px solid #fed7aa;background:#fff7ed;border-radius:12px;padding:9px 12px;margin:8px 0;break-inside:avoid}
+.err-it .qq{font-weight:700;unicode-bidi:plaintext}
+.err-it .mm{font-size:.92rem;color:var(--soft)}
+.err-it .mm b{color:var(--ink)}
+.advice{background:#ecfdf5;border:1.5px solid #86efac;border-radius:12px;padding:10px 14px;line-height:2}
+.good{color:var(--ok)}.badc{color:var(--bad)}
+@media(max-width:620px){.br .lb{flex-basis:44%}}
+#pa{display:none}
+@media print{
+ body.printing{background:#fff!important;padding:0;display:block}
+ body.printing>*:not(#pa){display:none!important}
+ body.printing #pa{display:block!important}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
- <h1>🏆 لوحة الترتيب</h1>
- <div class="sub">تتحدث تلقائيًا كل 3 ثوانٍ</div>
+ <h1>🏆 الفرض الإلكتروني في مادة المعلوماتية</h1>
+ <div class="sub">لوحة الأستاذة — الترتيب يتحدث تلقائيًا كل 3 ثوانٍ</div>
  <div class="stats">
   <div class="stat"><b id="st-n">0</b>عدد التلاميذ</div>
   <div class="stat"><b id="st-avg">–</b>المعدل</div>
@@ -64,6 +94,7 @@ tr:nth-child(1) td:first-child{color:#ffd700;font-weight:bold}
   </table>
  </div>
  <div class="tools">
+  <button class="btn main" id="b-analysis">📊 تحليل مستوى التلاميذ والأخطاء الشائعة</button>
   <button class="btn" id="b-printall">🖨 طباعة إجابات كل التلاميذ (ملف واحد)</button>
   <button class="btn" id="b-savepdfs">💾 حفظ PDF لكل تلميذ باسمه</button>
   <button class="btn" id="b-csv">⬇ تصدير Excel (CSV)</button>
@@ -74,6 +105,11 @@ tr:nth-child(1) td:first-child{color:#ffd700;font-weight:bold}
  <div class="mtools"><button class="btn" id="m-print">🖨 طباعة إجابات هذا التلميذ</button><button class="btn red" id="m-close">✖ إغلاق</button></div>
  <div id="m-body"></div>
 </div></div>
+<div id="amodal"><div class="mbox">
+ <div class="mtools"><button class="btn main" id="a-print">🖨 طباعة / حفظ التحليل PDF</button><button class="btn red" id="a-close">✖ إغلاق</button></div>
+ <div id="a-body" class="an"></div>
+</div></div>
+<div id="pa"></div>
 <script>
 const $ = s => document.querySelector(s);
 let pw = null;
@@ -196,51 +232,50 @@ async function showAnswers(r){
 }
 $('#m-close').onclick = () => $('#modal').classList.remove('open');
 $('#modal').onclick = e => { if(e.target.id === 'modal') $('#modal').classList.remove('open'); };
-/* الطباعة: نافذة (iframe) مستقلة بخلفية بيضاء تحتوي الإجابات فقط، فلا تتأثر بتخطيط اللوحة */
+/* الطباعة: تُطبع الإجابات في نفس الصفحة (تدفّق عادي، فتظهر كل الصفحات) بخلفية بيضاء، وتُخفى اللوحة أثناء الطباعة */
 const PRINT_CSS = `
 @page{size:A4;margin:12mm}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Tahoma,"Segoe UI",Arial,sans-serif;font-size:11pt;line-height:1.6}
-.stu{page-break-after:always}
-.stu:last-child{page-break-after:auto}
-h2{font-size:15pt;margin:0 0 4px;border-bottom:2px solid #000;padding-bottom:4px}
-.info{display:flex;flex-wrap:wrap;gap:4px 18px;margin:6px 0 10px;font-size:10.5pt}
-.rv{border:1px solid #000;border-radius:6px;padding:5px 9px;margin:6px 0;page-break-inside:avoid;break-inside:avoid}
-.rv-h{display:flex;justify-content:space-between;font-weight:bold;margin-bottom:3px}
-.rv-q{margin-bottom:4px}
-.rv-l{font-weight:bold;margin:4px 0 2px}
-.rv-o{display:flex;gap:8px;border:1px solid #bbb;padding:2px 7px;margin:2px 0;font-size:10.5pt}
-.rv-o .mk{flex:none;width:1.6em;text-align:center;font-weight:bold}
-.rv-o .tag{margin-inline-start:auto;font-size:9pt;white-space:nowrap}
-.rv-o.c{background:#e3f3e8;border:2px solid #1c8a4e;font-weight:bold}
-.rv-o.w{background:#fbe3e1;border:2px solid #c0392b}
-.rv-img{max-width:110px;max-height:75px;display:block;margin:3px 0}
-*{-webkit-print-color-adjust:exact;print-color-adjust:exact}`;
-function buildPrintHtml(items, title){
-  const box = document.createElement('div');
-  items.forEach(it => box.appendChild(studentBlock(it)));
-  return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>' + String(title || 'إجابات التلاميذ').replace(/[<>&]/g, '') + '</title><style>' + PRINT_CSS + '</style></head><body>' + box.innerHTML + '</body></html>';
+@media print{
+#pa,#pa *{box-sizing:border-box;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#pa{font-size:11pt;line-height:1.6;background:#fff}
+#pa .stu{break-after:page;page-break-after:always}
+#pa .stu:last-child{break-after:auto;page-break-after:auto}
+#pa h2{font-size:15pt;margin:0 0 4px;border-bottom:2px solid #000;padding-bottom:4px}
+#pa .info{display:flex;flex-wrap:wrap;gap:4px 18px;margin:6px 0 10px;font-size:10.5pt}
+#pa .rv{border:1px solid #000;border-radius:6px;padding:5px 9px;margin:6px 0;break-inside:avoid;page-break-inside:avoid;background:#fff}
+#pa .rv-h{display:flex;justify-content:space-between;font-weight:bold;margin-bottom:3px}
+#pa .rv-q{margin-bottom:4px}
+#pa .rv-l{font-weight:bold;margin:4px 0 2px;color:#000}
+#pa .rv-o{display:flex;gap:8px;border:1px solid #bbb;padding:2px 7px;margin:2px 0;font-size:10.5pt;background:#fff}
+#pa .rv-o .mk{flex:none;width:1.6em;text-align:center;font-weight:bold}
+#pa .rv-o .tag{margin-inline-start:auto;font-size:9pt;white-space:nowrap}
+#pa .rv-o.c{background:#e3f3e8;border:2px solid #1c8a4e;font-weight:bold}
+#pa .rv-o.w{background:#fbe3e1;border:2px solid #c0392b}
+#pa .rv-img{max-width:110px;max-height:75px;display:block;margin:3px 0}
+#pa .an h2{font-size:13pt}
+#pa .kp div{border:1px solid #888;background:#fff}
+#pa .br .tr{border:1px solid #888;background:#fff}
+#pa .err-it{background:#fff;border:1px solid #888}
+#pa .advice{background:#fff;border:1px solid #000}
+}`;
+(function(){ const st = document.createElement('style'); st.textContent = PRINT_CSS; document.head.appendChild(st); })();
+function printNode(node, title){
+  return new Promise(resolve => {
+    const pa = $('#pa'); pa.innerHTML = ''; pa.appendChild(node);
+    const prevTitle = document.title; document.title = title;   /* المتصفح يقترح اسم الملف من عنوان الصفحة */
+    document.body.classList.add('printing');
+    const done = () => { window.removeEventListener('afterprint', done); document.body.classList.remove('printing'); pa.innerHTML = ''; document.title = prevTitle; resolve(); };
+    window.addEventListener('afterprint', done);
+    const imgs = [...pa.querySelectorAll('img')];
+    Promise.all(imgs.map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; }))).then(() => setTimeout(() => window.print(), 150));
+  });
 }
 /* اسم الملف المقترح عند «حفظ كـ PDF»: اسم التلميذ - قسمه - فوجه */
 function fileTitle(r){ return [r.name, r.group, r.classGroup ? ('فوج ' + r.classGroup) : ''].filter(Boolean).join(' - ').replace(/[\\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120); }
 function doPrint(items, title){
-  return new Promise(resolve => {
-    const prevTitle = document.title; document.title = title;   /* المتصفح يقترح اسم الملف من عنوان الصفحة */
-    const f = document.createElement('iframe');
-    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-    f.srcdoc = buildPrintHtml(items, title);
-    let finished = false;
-    const finish = () => { if(finished) return; finished = true; document.title = prevTitle; setTimeout(() => f.remove(), 500); resolve(); };
-    f.onload = async () => {
-      const w = f.contentWindow;
-      await Promise.all([...w.document.images].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
-      w.document.title = title;
-      w.onafterprint = finish;
-      w.focus(); w.print();
-      setTimeout(finish, 600000);
-    };
-    document.body.appendChild(f);
-  });
+  const box = document.createElement('div');
+  items.forEach(it => box.appendChild(studentBlock(it)));
+  return printNode(box, title);
 }
 $('#m-print').onclick = () => { if(curItem) doPrint([curItem], fileTitle(curItem.row)); };
 async function allItems(){
@@ -256,6 +291,120 @@ $('#b-savepdfs').onclick = async () => {
   if(!confirm('سيُفتح حوار حفظ لكل تلميذ (' + items.length + ' ملفًا)، باسم: الاسم - القسم - الفوج. اختاري «حفظ كـ PDF» ثم أكّدي الحفظ في كل مرة. متابعة؟')) return;
   for(const it of items){ await doPrint([it], fileTitle(it.row)); }
 };
+
+/* ---------- تحليل مستوى التلاميذ والأخطاء الشائعة ---------- */
+const KIND_NAMES = {mc:'اختيار من متعدد', def:'تعريفات متشابهة', odd:'اكتشاف الدخيل', case:'وضعيات مشكلة', fill:'إكمال', tf:'صحيح / خطأ', order:'ترتيب', match:'مطابقة'};
+const pct = (a, b) => b ? Math.round(a * 100 / b) : 0;
+const colorOf = p => p >= 75 ? '#16a34a' : p >= 50 ? '#f59e0b' : '#dc2626';
+function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+function barRow(label, p, extra){
+  const r = el('div', 'br'); r.appendChild(el('span', 'lb', label));
+  const tr = el('div', 'tr'), fl = el('div', 'fl'); fl.style.width = Math.max(p, 1) + '%'; fl.style.background = colorOf(p); tr.appendChild(fl); r.appendChild(tr);
+  const nu = el('span', 'nu', p + '%' + (extra ? ' ' + extra : '')); r.appendChild(nu); return r;
+}
+function wrongText(it){
+  const t = it.type || 'mc';
+  if(!rvAnswered(it)) return null;
+  if(t === 'mc') return it.chosen;
+  if(t === 'order') return 'ترتيب خاطئ للخطوات';
+  return 'مطابقة خاطئة لبعض العناصر';
+}
+function buildAnalysis(items, catNames){
+  const root = el('div', 'an');
+  const rows = items.map(i => i.row), n = rows.length;
+  const scores = rows.map(r => r.score).sort((x, y) => x - y), total = rows[0].total || 20;
+  const sum = scores.reduce((x, y) => x + y, 0), avg = sum / n;
+  const med = n % 2 ? scores[(n - 1) / 2] : (scores[n / 2 - 1] + scores[n / 2]) / 2;
+  const sd = Math.sqrt(scores.reduce((x, s) => x + (s - avg) ** 2, 0) / n);
+  const pass = rows.filter(r => r.score >= total / 2).length;
+  const sec = rows.reduce((x, r) => x + r.seconds, 0) / n;
+  const reviews = items.filter(i => i.review);
+
+  /* 1) مؤشرات عامة */
+  root.appendChild(el('h2', null, '1) صورة عامة عن مستوى التلاميذ'));
+  const kp = el('div', 'kp');
+  [['عدد التلاميذ', n], ['المعدل', avg.toFixed(2) + ' / ' + total], ['الوسيط', med], ['أعلى نقطة', scores[n - 1]], ['أدنى نقطة', scores[0]], ['نسبة النجاح (' + total / 2 + ' فأكثر)', pct(pass, n) + '%'], ['متوسط المدة', fmt(Math.round(sec))]].forEach(([k, v]) => {
+    const d = el('div'); d.appendChild(document.createTextNode(k)); const b = el('b'); const bd = document.createElement('bdi'); bd.dir = 'ltr'; bd.textContent = v; b.appendChild(bd); d.appendChild(b); kp.appendChild(d);
+  });
+  root.appendChild(kp);
+  const bands = [['ممتاز (16 فأكثر)', r => r.score >= 16, '#16a34a'], ['جيد (12 إلى 15)', r => r.score >= 12 && r.score < 16, '#65a30d'], ['متوسط (10 إلى 11)', r => r.score >= 10 && r.score < 12, '#f59e0b'], ['ضعيف (أقل من 10)', r => r.score < 10, '#dc2626']];
+  bands.forEach(([lb, f, c]) => { const k = rows.filter(f).length; const r = barRow(lb, pct(k, n), '(' + k + ')'); r.querySelector('.fl').style.background = c; root.appendChild(r); });
+  /* مدرّج تكراري */
+  const cnt = Array(total + 1).fill(0); rows.forEach(r => cnt[r.score]++); const mx = Math.max(...cnt, 1);
+  root.appendChild(el('div', 'rv-l', 'توزيع العلامات (عدد التلاميذ لكل علامة):'));
+  const h = el('div', 'hist'); cnt.forEach(c => { const d = el('div'); d.style.height = Math.max(c * 100 / mx, 2) + '%'; if(c) d.appendChild(el('span', null, c)); h.appendChild(d); }); root.appendChild(h);
+  const hl = el('div', 'hl'); cnt.forEach((c, i) => hl.appendChild(el('span', null, i))); root.appendChild(hl);
+
+  if(!reviews.length){ root.appendChild(el('p', 'rv-l', 'لا تتوفر تفاصيل الإجابات لتحليل الأخطاء (نتائج قديمة).')); return root; }
+
+  /* تجميع الإحصاءات من كل الإجابات */
+  const byCat = {}, byKind = {}, byQ = {};
+  reviews.forEach(i => i.review.forEach(it => {
+    const c = it.cat || 'other', k = it.kind || (it.type || 'mc');
+    (byCat[c] = byCat[c] || {a: 0, ok: 0}).a++; if(it.ok) byCat[c].ok++;
+    (byKind[k] = byKind[k] || {a: 0, ok: 0}).a++; if(it.ok) byKind[k].ok++;
+    const q = (byQ[it.q] = byQ[it.q] || {q: it.q, cat: c, kind: k, type: it.type || 'mc', a: 0, ok: 0, skip: 0, wrong: {}, correct: it.correct});
+    q.a++; if(it.ok) q.ok++; else if(!rvAnswered(it)) q.skip++; else { const w = wrongText(it); q.wrong[w] = (q.wrong[w] || 0) + 1; }
+  }));
+
+  /* 2) حسب الدروس */
+  root.appendChild(el('h2', null, '2) نسبة النجاح حسب الدرس'));
+  const cats = Object.entries(byCat).map(([c, v]) => ({c, p: pct(v.ok, v.a), a: v.a})).sort((x, y) => x.p - y.p);
+  cats.forEach(x => root.appendChild(barRow(catNames[x.c] || x.c, x.p)));
+
+  /* 3) حسب نوع السؤال */
+  root.appendChild(el('h2', null, '3) نسبة النجاح حسب نوع السؤال'));
+  const kinds = Object.entries(byKind).map(([k, v]) => ({k, p: pct(v.ok, v.a), a: v.a})).sort((x, y) => x.p - y.p);
+  kinds.forEach(x => root.appendChild(barRow(KIND_NAMES[x.k] || x.k, x.p)));
+
+  /* 4) أكثر الأسئلة خطأً */
+  root.appendChild(el('h2', null, '4) أكثر الأخطاء شيوعًا'));
+  const minA = n >= 10 ? 3 : 1;
+  const hard = Object.values(byQ).filter(q => q.a >= minA && q.ok < q.a).sort((x, y) => (y.a - y.ok) / y.a - (x.a - x.ok) / x.a || y.a - x.a).slice(0, 12);
+  if(!hard.length) root.appendChild(el('p', null, 'لا توجد أخطاء متكررة تُذكر.'));
+  hard.forEach((q, i) => {
+    const d = el('div', 'err-it');
+    d.appendChild(el('div', 'qq', (i + 1) + '. ' + q.q));
+    const wr = q.a - q.ok;
+    d.appendChild(el('div', 'mm', 'أخطأ فيه ' + pct(wr, q.a) + '% من الذين ظهر لهم (' + wr + ' من ' + q.a + (q.skip ? '، منهم ' + q.skip + ' تركوه' : '') + ')'));
+    const top = Object.entries(q.wrong).sort((x, y) => y[1] - x[1])[0];
+    if(top) d.appendChild(el('div', 'mm', 'الإجابة الخاطئة الأكثر اختيارًا: «' + top[0] + '» (' + top[1] + ')'));
+    if(q.type === 'mc' && q.correct) d.appendChild(el('div', 'mm', 'الصحيح: «' + q.correct + '»'));
+    d.appendChild(el('div', 'mm', 'الدرس: ' + (catNames[q.cat] || q.cat)));
+    root.appendChild(d);
+  });
+
+  /* 5) تلاميذ يحتاجون إلى دعم */
+  root.appendChild(el('h2', null, '5) تلاميذ يحتاجون إلى دعم (أقل من ' + total / 2 + ')'));
+  const weak = rows.filter(r => r.score < total / 2);
+  root.appendChild(el('p', null, weak.length ? weak.map(r => r.name + ' (' + r.group + ' — ' + r.score + ')').join('  ،  ') : 'لا يوجد تلميذ بعلامة أقل من المتوسط 👏'));
+
+  /* 6) خلاصة وتوصيات */
+  root.appendChild(el('h2', null, '6) الخلاصة والتوصيات'));
+  const adv = el('div', 'advice');
+  const lvl = avg >= 16 ? 'ممتاز' : avg >= 12 ? 'جيد' : avg >= 10 ? 'متوسط' : 'ضعيف';
+  const L = [];
+  L.push('المستوى العام للتلاميذ: ' + lvl + ' (المعدل ' + avg.toFixed(1) + ' من ' + total + '، ونسبة النجاح ' + pct(pass, n) + '%).');
+  if(cats.length){ L.push('أضعف درس: «' + (catNames[cats[0].c] || cats[0].c) + '» (' + cats[0].p + '% نجاح) — يُنصح بإعادة شرحه وإعطاء تمارين تدعيمية.'); const b = cats[cats.length - 1]; L.push('أقوى درس: «' + (catNames[b.c] || b.c) + '» (' + b.p + '% نجاح).'); }
+  if(kinds.length){ L.push('أصعب نوع من الأسئلة: ' + (KIND_NAMES[kinds[0].k] || kinds[0].k) + ' (' + kinds[0].p + '% نجاح).'); }
+  if(hard[0]) L.push('أكثر خطأ شيوعًا: «' + hard[0].q + '» — أخطأ فيه ' + pct(hard[0].a - hard[0].ok, hard[0].a) + '% من التلاميذ.');
+  L.forEach(t => { adv.appendChild(el('div', null, '• ' + t)); });
+  root.appendChild(adv);
+  return root;
+}
+let CATN = {};
+async function openAnalysis(){
+  const items = await allItems(); if(!items) return;
+  try{ CATN = (await (await fetch('/api/quiz')).json()).catNames || {}; }catch(e){}
+  const body = $('#a-body'); body.innerHTML = '';
+  body.appendChild(el('h1', null, 'تحليل مستوى التلاميذ والأخطاء الشائعة'));
+  body.appendChild(buildAnalysis(items, CATN));
+  $('#amodal').classList.add('open');
+}
+$('#b-analysis').onclick = openAnalysis;
+$('#a-close').onclick = () => $('#amodal').classList.remove('open');
+$('#amodal').onclick = e => { if(e.target.id === 'amodal') $('#amodal').classList.remove('open'); };
+$('#a-print').onclick = () => { printNode($('#a-body').cloneNode(true), 'تحليل مستوى التلاميذ - الفرض الإلكتروني'); };
 
 load(); setInterval(load, 3000);
 </script>
