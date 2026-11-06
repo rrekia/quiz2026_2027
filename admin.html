@@ -46,25 +46,6 @@ tr:nth-child(1) td:first-child{color:#ffd700;font-weight:bold}
 .rv-o.w{background:#c0392b66;border-color:#ff6b6b}
 .rv-o .tag{margin-inline-start:auto;font-size:.85rem;white-space:nowrap}
 .rv-l{color:#ffe9a0;font-size:.9rem;margin:8px 2px 2px}
-#print-area{display:none}
-@media print{
- body.printing{background:#fff!important;color:#000!important;padding:0;min-height:0}
- body.printing > *:not(#print-area){display:none!important}
- body.printing #print-area{display:block}
- .printing .stu{page-break-after:always;font-size:11pt}
- .printing .stu:last-child{page-break-after:auto}
- .printing .stu h2{color:#000;font-size:15pt;border-bottom:2px solid #000;padding-bottom:4px}
- .printing .info{color:#000}.printing .info b{color:#000}
- .printing .rv{background:#fff;border:1px solid #000;border-radius:6px;padding:5px 9px;margin:6px 0;break-inside:avoid}
- .printing .rv-h,.printing .rv-q,.printing .rv-o,.printing .rv-l{color:#000}
- .printing .rv-l{font-weight:bold}
- .printing .rv .st{color:#000!important}
- .printing .rv-o{border:1px solid #bbb;padding:2px 7px;margin:2px 0;font-size:10.5pt}
- .printing .rv-o.c{background:#e3f3e8!important;border:2px solid #1c8a4e;font-weight:bold;-webkit-print-color-adjust:exact;print-color-adjust:exact}
- .printing .rv-o.w{background:#fbe3e1!important;border:2px solid #c0392b;-webkit-print-color-adjust:exact;print-color-adjust:exact}
- .printing .rv-img{max-width:110px;max-height:75px}
- @page{margin:12mm}
-}
 </style>
 </head>
 <body>
@@ -92,7 +73,6 @@ tr:nth-child(1) td:first-child{color:#ffd700;font-weight:bold}
  <div class="mtools"><button class="btn" id="m-print">🖨 طباعة إجابات هذا التلميذ</button><button class="btn red" id="m-close">✖ إغلاق</button></div>
  <div id="m-body"></div>
 </div></div>
-<div id="print-area"></div>
 <script>
 const $ = s => document.querySelector(s);
 let pw = null;
@@ -215,12 +195,42 @@ async function showAnswers(r){
 }
 $('#m-close').onclick = () => $('#modal').classList.remove('open');
 $('#modal').onclick = e => { if(e.target.id === 'modal') $('#modal').classList.remove('open'); };
+/* الطباعة: نافذة (iframe) مستقلة بخلفية بيضاء تحتوي الإجابات فقط، فلا تتأثر بتخطيط اللوحة */
+const PRINT_CSS = `
+@page{size:A4;margin:12mm}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Tahoma,"Segoe UI",Arial,sans-serif;font-size:11pt;line-height:1.6}
+.stu{page-break-after:always}
+.stu:last-child{page-break-after:auto}
+h2{font-size:15pt;margin:0 0 4px;border-bottom:2px solid #000;padding-bottom:4px}
+.info{display:flex;flex-wrap:wrap;gap:4px 18px;margin:6px 0 10px;font-size:10.5pt}
+.rv{border:1px solid #000;border-radius:6px;padding:5px 9px;margin:6px 0;page-break-inside:avoid;break-inside:avoid}
+.rv-h{display:flex;justify-content:space-between;font-weight:bold;margin-bottom:3px}
+.rv-q{margin-bottom:4px}
+.rv-l{font-weight:bold;margin:4px 0 2px}
+.rv-o{display:flex;gap:8px;border:1px solid #bbb;padding:2px 7px;margin:2px 0;font-size:10.5pt}
+.rv-o .mk{flex:none;width:1.6em;text-align:center;font-weight:bold}
+.rv-o .tag{margin-inline-start:auto;font-size:9pt;white-space:nowrap}
+.rv-o.c{background:#e3f3e8;border:2px solid #1c8a4e;font-weight:bold}
+.rv-o.w{background:#fbe3e1;border:2px solid #c0392b}
+.rv-img{max-width:110px;max-height:75px;display:block;margin:3px 0}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}`;
+function buildPrintHtml(items){
+  const box = document.createElement('div');
+  items.forEach(it => box.appendChild(studentBlock(it)));
+  return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>إجابات التلاميذ</title><style>' + PRINT_CSS + '</style></head><body>' + box.innerHTML + '</body></html>';
+}
 function doPrint(items){
-  const pa = $('#print-area'); pa.innerHTML = ''; items.forEach(it => pa.appendChild(studentBlock(it)));
-  document.body.classList.add('printing');
-  const done = () => { document.body.classList.remove('printing'); pa.innerHTML = ''; window.removeEventListener('afterprint', done); };
-  window.addEventListener('afterprint', done);
-  setTimeout(() => window.print(), 150);
+  const f = document.createElement('iframe');
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  f.srcdoc = buildPrintHtml(items);
+  f.onload = async () => {
+    const w = f.contentWindow;
+    await Promise.all([...w.document.images].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
+    w.focus(); w.print();
+    setTimeout(() => f.remove(), 120000);
+  };
+  document.body.appendChild(f);
 }
 $('#m-print').onclick = () => { if(curItem) doPrint([curItem]); };
 $('#b-printall').onclick = async () => {
