@@ -64,7 +64,8 @@ tr:nth-child(1) td:first-child{color:#ffd700;font-weight:bold}
   </table>
  </div>
  <div class="tools">
-  <button class="btn" id="b-printall">🖨 طباعة إجابات كل التلاميذ</button>
+  <button class="btn" id="b-printall">🖨 طباعة إجابات كل التلاميذ (ملف واحد)</button>
+  <button class="btn" id="b-savepdfs">💾 حفظ PDF لكل تلميذ باسمه</button>
   <button class="btn" id="b-csv">⬇ تصدير Excel (CSV)</button>
   <button class="btn red" id="b-reset">🗑 مسح كل النتائج</button>
  </div>
@@ -215,29 +216,45 @@ h2{font-size:15pt;margin:0 0 4px;border-bottom:2px solid #000;padding-bottom:4px
 .rv-o.w{background:#fbe3e1;border:2px solid #c0392b}
 .rv-img{max-width:110px;max-height:75px;display:block;margin:3px 0}
 *{-webkit-print-color-adjust:exact;print-color-adjust:exact}`;
-function buildPrintHtml(items){
+function buildPrintHtml(items, title){
   const box = document.createElement('div');
   items.forEach(it => box.appendChild(studentBlock(it)));
-  return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>إجابات التلاميذ</title><style>' + PRINT_CSS + '</style></head><body>' + box.innerHTML + '</body></html>';
+  return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>' + String(title || 'إجابات التلاميذ').replace(/[<>&]/g, '') + '</title><style>' + PRINT_CSS + '</style></head><body>' + box.innerHTML + '</body></html>';
 }
-function doPrint(items){
-  const f = document.createElement('iframe');
-  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-  f.srcdoc = buildPrintHtml(items);
-  f.onload = async () => {
-    const w = f.contentWindow;
-    await Promise.all([...w.document.images].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
-    w.focus(); w.print();
-    setTimeout(() => f.remove(), 120000);
-  };
-  document.body.appendChild(f);
+/* اسم الملف المقترح عند «حفظ كـ PDF»: اسم التلميذ - قسمه - فوجه */
+function fileTitle(r){ return [r.name, r.group, r.classGroup ? ('فوج ' + r.classGroup) : ''].filter(Boolean).join(' - ').replace(/[\\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120); }
+function doPrint(items, title){
+  return new Promise(resolve => {
+    const prevTitle = document.title; document.title = title;   /* المتصفح يقترح اسم الملف من عنوان الصفحة */
+    const f = document.createElement('iframe');
+    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    f.srcdoc = buildPrintHtml(items, title);
+    let finished = false;
+    const finish = () => { if(finished) return; finished = true; document.title = prevTitle; setTimeout(() => f.remove(), 500); resolve(); };
+    f.onload = async () => {
+      const w = f.contentWindow;
+      await Promise.all([...w.document.images].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
+      w.document.title = title;
+      w.onafterprint = finish;
+      w.focus(); w.print();
+      setTimeout(finish, 600000);
+    };
+    document.body.appendChild(f);
+  });
 }
-$('#m-print').onclick = () => { if(curItem) doPrint([curItem]); };
-$('#b-printall').onclick = async () => {
-  if(!askPw()) return;
-  const d = await postJson('/api/admin/answers-all', {password:pw}); if(!d) return;
-  if(!d.items.length){ alert('لا توجد نتائج للطباعة.'); return; }
-  doPrint(d.items);
+$('#m-print').onclick = () => { if(curItem) doPrint([curItem], fileTitle(curItem.row)); };
+async function allItems(){
+  if(!askPw()) return null;
+  const d = await postJson('/api/admin/answers-all', {password:pw}); if(!d) return null;
+  if(!d.items.length){ alert('لا توجد نتائج للطباعة.'); return null; }
+  return d.items;
+}
+$('#b-printall').onclick = async () => { const items = await allItems(); if(items) doPrint(items, 'إجابات التلاميذ'); };
+/* ملف PDF مستقل لكل تلميذ: تظهر نافذة حفظ لكل تلميذ بالاسم مقترحًا، وتكتفين بالتأكيد */
+$('#b-savepdfs').onclick = async () => {
+  const items = await allItems(); if(!items) return;
+  if(!confirm('سيُفتح حوار حفظ لكل تلميذ (' + items.length + ' ملفًا)، باسم: الاسم - القسم - الفوج. اختاري «حفظ كـ PDF» ثم أكّدي الحفظ في كل مرة. متابعة؟')) return;
+  for(const it of items){ await doPrint([it], fileTitle(it.row)); }
 };
 
 load(); setInterval(load, 3000);
